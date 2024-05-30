@@ -57,7 +57,7 @@ function ModalForm({btnOpenModal, show, handleSave, CreateOrUpdateId,btnCloseMod
           <Typography id="modal-title" variant="h6" component="h2">
             Modal Form
           </Typography>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSave}>
             <TextField
               margin="normal"
               required

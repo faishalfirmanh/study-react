@@ -1,21 +1,24 @@
 import * as React from 'react';
 import { styled } from '@mui/system';
 import {
-  TablePagination,
-  tablePaginationClasses as classes,
+tablePaginationClasses as classes,
 } from '@mui/base/TablePagination';
-import ButtonCustom from './ButtonCustom';
+
 import { useState, useEffect } from 'react';
-import ModalForm from './ModalForm';
-import {Modal, Button, TextField, Typography} from '@mui/material';
+import ModalComponent from './ModalComponent';
+import { Button } from 'react-bootstrap';
 
 import axios from 'axios'
 import { ReqApiStudy, base_url, study_delete, study_get_all } from '../entpoint/RequestApi';
-import { Alert } from '@mui/material';
-import ModalComponent from './ModalComponent';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
+  TablePagination, CircularProgress, Box } from '@mui/material';
+import ModalCustom from './ModalCustom';
+
 export default function TableMui() {
     const url_ = "https://study.cobaktesbrow.com/api/";
 
+
+ 
 
   const [page, setPage] = useState(0);
   const [nextPage, setNextPage] = useState(0);
@@ -23,11 +26,14 @@ export default function TableMui() {
   const [countData, setCountDate] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [dataEmp, setEmployee] = useState({})
+
+  const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
   const [closeModal, setCloseModal] = useState(true);
-  const [currentData, setCurrentData] = useState(null);
-  const [items, setItems] = useState(0);
+  const [currentItem, setCurrentItem] = useState(null);
+  const [items, setItems] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [emp, setEmp] = useState(0);
 
   function isEmpty(obj) {
@@ -35,7 +41,7 @@ export default function TableMui() {
   }
 
   useEffect(()=>{  
-     getAllEmployee(page,rowsPerPage)
+     getAllEmployee()
  },[page,rowsPerPage])
 
 
@@ -58,17 +64,20 @@ export default function TableMui() {
  }
 
  
-  const getAllEmployee = (page_param, limit_param)=>{
-    console.log("--param page--",page_param)
+  const getAllEmployee = ()=>{
+   
+
     
      const urlGet = `${base_url}${study_get_all}`
      const param = {
-        page : page_param,
-        limit :limit_param
+        page : page+1,
+        limit :rowsPerPage
      }
       ReqApiStudy(urlGet, param)
       .then(function (response) {
         const respons_current_page = response.data.data.current_page
+        console.log("--after req | next page- ",response.data.data.next_page_url)
+        console.log("-cur page-",respons_current_page)
         cekPrev(response.data.data.prev_page_url)
         cekNext(response.data.data.next_page_url)
         setCountDate(response.data.data.total)
@@ -77,51 +86,60 @@ export default function TableMui() {
          }else{
             setEmployee(undefined)
          }
-         console.log("--data ",response.data.data.next_page_url)
+       
       })
       .catch(function (error) {
         
         console.log(error);
-      });
+      })
+      .finally(function(){
+        setLoading(false);
+      })
+      
   }
 
 
   //modal awal
-  const handleOpenModalProps = () => {
-        setEmp(0);
-        setShowModal(true) 
-
+  const handleCreateModal = () => {
+    setCurrentItem(null);
+    setShowModal(true);
+    setIsEditMode(false)
   };
 
-  const CloseModalProps = () =>{setShowModal(false)};
+  const handleEditModal = (item) => {
+    setCurrentItem(item);
+    console.log("tabble",item)
+    setShowModal(true);
+    setIsEditMode(true)
+  };
 
-const handleSubmit = (data) => {
-    if (currentData) {
-        // Edit existing item
-        setItems(items.map(item => item === currentData ? data : item));
+  const submitApi = (item)=>{
+    if (isEditMode) {
+      setItems(items.map(i => (i.id === item.id ? item : i)));
     } else {
-        // Create new item
-        setItems([...items, data]);
+      setItems([...items, { ...item, id: items.length + 1 }]);
     }
-    
-};
+    setShowModal(false);
+    getAllEmployee(1,rowsPerPage)
+    console.log('====================================');
+    items.map((ee)=>{
+      console.log(ee)
+    })
+    console.log('====================================');
+  }
+
   //modal akhir
  
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
 
   const handleChangePage = (event, newPage) => {
-    // getAllEmployee(nextPage,rowsPerPage)
-    // setPage(newPage);
-    // console.log('====================================');
-    console.log("new page",page);
-    // console.log('====================================');
+    console.log("new page",page, "| ",newPage);
+    
     setPage(newPage);
   };
 
   const handleChangeRowsPerPage = (event) => {
-    let cek_all = parseInt(event.target.value) < 0 ? countData : parseInt(event.target.value);
-    getAllEmployee(0,cek_all)
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
@@ -142,77 +160,79 @@ const handleSubmit = (data) => {
      });
   };
 
-  const handleEdit = (id) => {
-    setShowModal(true);
-    setEmp(id)
-    console.log(`Edit row with id: ${id}`);
-  };
-
-  const displayData = () =>{
-    if (!isEmpty(dataEmp)) {
-        return (rowsPerPage > 0 ? dataEmp.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage): dataEmp).map((row) => 
-            (
-                <tr key={row.id}>
-                <td>{row.name}</td>
-                <td style={{ width: 260 }} align="right">
-                    {row.email}
-                </td>
-                <td style={{ width: 160 }} align="right">
-                    <button onClick={() => handleEdit(row.id)}>Edit</button>
-                    <button style={{marginLeft:20}} onClick={() => handleDeleted(row.id)}>Deleted</button>
-                </td>
-                </tr>
-            )
-          )
+ 
+  const tampilData = ()=>{
+    if(!isEmpty(dataEmp)){
+      return(
+       dataEmp.map((row) => (
+         <TableRow key={row.id}>
+           <TableCell>{row.id}</TableCell>
+           <TableCell>{row.name}</TableCell>
+           <TableCell>{row.email}</TableCell>
+           <TableCell>
+             <button onClick={() =>handleEditModal(row.id)}>Edit</button>
+             <button style={{marginLeft:20}} onClick={() => handleDeleted(row.id)}>Deleted</button>
+                      </TableCell>
+         </TableRow>
+       ))
+      )
     }
-  }
+ }
+
 
   return (
     <Root sx={{ maxWidth: '100%', width: 800, marginLeft:"auto",marginRight:"auto",marginTop:40}}>
-     <ModalForm CreateOrUpdateId={emp} btnOpenModal={handleOpenModalProps} btnCloseModal={CloseModalProps} show={showModal}/>
+     {/* <ModalForm 
+     handleSave={submitApi(emp)}
+     CreateOrUpdateId={emp} 
+     btnOpenModal={handleOpenModalProps} 
+     btnCloseModal={CloseModalProps} show={showModal}/> */}
+
+    <Button onClick={handleCreateModal}>Create Item</Button>
+     <ModalCustom
+     show={showModal}
+     onHide={() => setShowModal(false)}
+     onSave={submitApi}
+     item={currentItem}
+     isEditMode={isEditMode}
+     />
      
-      <table aria-label="custom pagination table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-        {displayData()}
-          {
-            emptyRows > 0 && 
-            (
-                <tr style={{ height: 41 * emptyRows }}>
-                <td colSpan={3} aria-hidden />
-                </tr>
-            )
-          }
-        </tbody>
-        <tfoot>
-          <tr>
-            <CustomTablePagination
-              rowsPerPageOptions={[5, 10, countData, { label: 'All', value: -1 }]}
-              colSpan={3}
-              count={countData}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              slotProps={{
-                select: {
-                  'aria-label': 'rows per page',
-                },
-                actions: {
-                  showFirstButton: true,
-                  showLastButton: true,
-                },
-              }}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
-          </tr>
-        </tfoot>
-      </table>
+     <Paper>
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Action</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={3} align="center">
+                  <Box display="flex" justifyContent="center">
+                    <CircularProgress />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : 
+              tampilData()
+            }
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <TablePagination
+        component="div"
+        count={countData}
+        page={page}
+        onPageChange={handleChangePage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, countData]}
+      />
+    </Paper>
     </Root>
   );
 }
