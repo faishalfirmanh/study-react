@@ -5,20 +5,19 @@ tablePaginationClasses as classes,
 } from '@mui/base/TablePagination';
 
 import { useState, useEffect } from 'react';
-import ModalComponent from './ModalComponent';
+
 import { Button } from 'react-bootstrap';
 
-import axios from 'axios'
+
 import { ReqApiStudy, base_url, study_delete, study_get_all } from '../entpoint/RequestApi';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   TablePagination, CircularProgress, Box } from '@mui/material';
-import ModalCustom from './ModalCustom';
+
+import UserModalForm from './UserModalForm';
+import ButtonCustom from './ButtonCustom';
+
 
 export default function TableMui() {
-    const url_ = "https://study.cobaktesbrow.com/api/";
-
-
- 
 
   const [page, setPage] = useState(0);
   const [nextPage, setNextPage] = useState(0);
@@ -30,11 +29,8 @@ export default function TableMui() {
   const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
-  const [closeModal, setCloseModal] = useState(true);
-  const [currentItem, setCurrentItem] = useState(null);
-  const [items, setItems] = useState([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [emp, setEmp] = useState(0);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+ 
 
   function isEmpty(obj) {
     return JSON.stringify(obj) === '{}';
@@ -99,40 +95,23 @@ export default function TableMui() {
   }
 
 
-  //modal awal
-  const handleCreateModal = () => {
-    setCurrentItem(null);
-    setShowModal(true);
-    setIsEditMode(false)
+
+  const refreshData = () => {
+    getAllEmployee()
   };
 
-  const handleEditModal = (item) => {
-    setCurrentItem(item);
-    console.log("tabble",item)
+  const handleModalShow = (userId = null) => {
+    setSelectedUserId(userId);
     setShowModal(true);
-    setIsEditMode(true)
   };
 
-  const submitApi = (item)=>{
-    if (isEditMode) {
-      setItems(items.map(i => (i.id === item.id ? item : i)));
-    } else {
-      setItems([...items, { ...item, id: items.length + 1 }]);
-    }
+
+  const handleModalClose = () => {
     setShowModal(false);
-    getAllEmployee(1,rowsPerPage)
-    console.log('====================================');
-    items.map((ee)=>{
-      console.log(ee)
-    })
-    console.log('====================================');
-  }
+    setSelectedUserId(null);
+  };
 
-  //modal akhir
  
-  const emptyRows =
-    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
-
   const handleChangePage = (event, newPage) => {
     console.log("new page",page, "| ",newPage);
     
@@ -170,9 +149,10 @@ export default function TableMui() {
            <TableCell>{row.name}</TableCell>
            <TableCell>{row.email}</TableCell>
            <TableCell>
-             <button onClick={() =>handleEditModal(row.id)}>Edit</button>
-             <button style={{marginLeft:20}} onClick={() => handleDeleted(row.id)}>Deleted</button>
-                      </TableCell>
+              <ButtonCustom label="edit" onClick={() =>handleModalShow(row.id)} variant="primary" size="sm" />
+             {/* <button onClick={() =>handleModalShow(row.id)}>Edit</button> */}
+             <ButtonCustom label="delete" onClick={() =>handleDeleted(row.id)} variant="danger" size="sm" />
+           </TableCell>
          </TableRow>
        ))
       )
@@ -181,21 +161,18 @@ export default function TableMui() {
 
 
   return (
-    <Root sx={{ maxWidth: '100%', width: 800, marginLeft:"auto",marginRight:"auto",marginTop:40}}>
-     {/* <ModalForm 
-     handleSave={submitApi(emp)}
-     CreateOrUpdateId={emp} 
-     btnOpenModal={handleOpenModalProps} 
-     btnCloseModal={CloseModalProps} show={showModal}/> */}
+    <Root sx={{ maxWidth: '100%', width: 800, marginLeft:"auto",marginRight:"auto",marginTop:10}}>
+   
 
-    <Button onClick={handleCreateModal}>Create Item</Button>
-     <ModalCustom
-     show={showModal}
-     onHide={() => setShowModal(false)}
-     onSave={submitApi}
-     item={currentItem}
-     isEditMode={isEditMode}
-     />
+    {/* <Button onClick={() => handleModalShow()}>Create User</Button> */}
+    <ButtonCustom label="create" onClick={()=>handleModalShow()} variant="primary" size="sm" />
+    <UserModalForm
+        show={showModal}
+        handleClose={handleModalClose}
+        userId={selectedUserId}
+        refreshData={refreshData}
+      />
+
      
      <Paper>
       <TableContainer>
@@ -237,25 +214,7 @@ export default function TableMui() {
   );
 }
 
-function createData(name, calories, fat) {
-  return { name, calories, fat };
-}
 
-const rows = [
-  createData('Cupcake', 305, 1),
-  createData('Donut', 452, 2),
-  createData('Eclair', 262, 3),
-  createData('Frozen yoghurt', 159, 4),
-  createData('Gingerbread', 356, 6),
-  createData('Honeycomb', 408, 5),
-  createData('Ice cream sandwich', 237, 7),
-  createData('Jelly Bean', 375, 8),
-  createData('KitKat', 518, 9),
-  createData('Lollipop', 392, 10),
-  createData('Marshmallow', 318, 11),
-  createData('Nougat', 360, 12),
-  createData('Oreo', 437, 13),
-].sort((a, b) => (a.calories < b.calories ? -1 : 1));
 
 const grey = {
   50: '#F3F6F9',
@@ -292,37 +251,4 @@ const Root = styled('div')(
   `,
 );
 
-const CustomTablePagination = styled(TablePagination)`
-  & .${classes.toolbar} {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
 
-    @media (min-width: 768px) {
-      flex-direction: row;
-      align-items: center;
-    }
-  }
-
-  & .${classes.selectLabel} {
-    margin: 0;
-  }
-
-  & .${classes.displayedRows} {
-    margin: 0;
-
-    @media (min-width: 768px) {
-      margin-left: auto;
-    }
-  }
-
-  & .${classes.spacer} {
-    display: none;
-  }
-
-  & .${classes.actions} {
-    display: flex;
-    gap: 0.25rem;
-  }
-`;
